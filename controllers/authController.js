@@ -13,7 +13,7 @@ async function index(req, res) {
           console.log("Error fetching students: ", error);
           reject("ユーザーの取得に失敗しました");
         } else {
-          // console.log("Fetched students: ", results);
+          console.log("Fetched students: ", results);
           resolve(results);
         }
       });
@@ -114,98 +114,6 @@ async function register(req, res) {
     return res.status(500).json({ error });
   }
 }
-
-// async function register(req, res) {
-//   const name = req.body.name;
-//   const email = req.body.email;
-//   const password = req.body.password;
-//   const errors = validationResult(req);
-
-//   if (!errors.isEmpty()) {
-//     console.log(errors.array());
-//     return res.status(400).json({ errors: errors.array() });
-//   }
-
-//   try {
-//     const { connection } = require("../server");
-
-//     // ユーザーの存在をチェック
-//     const existingUser = await new Promise((resolve, reject) => {
-//       connection.query(
-//         "SELECT * FROM students WHERE email = ?",
-//         [email],
-//         (error, results) => {
-//           if (error) {
-//             console.error(error);
-//             reject("サーバーエラーが発生しました");
-//           } else {
-//             resolve(results);
-//           }
-//         }
-//       );
-//     });
-
-//     if (existingUser.length > 0) {
-//       // ユーザーが既に存在する場合
-//       return res
-//         .status(400)
-//         .json([{ message: "すでにそのユーザーは存在しています" }]);
-//     }
-
-//     // パスワードをハッシュ化
-//     const hashedPassword = await bcrypt.hash(password, 10);
-
-//     // 新規ユーザーをデータベースに追加
-//     const insertResult = await new Promise((resolve, reject) => {
-//       const sql =
-//         "INSERT INTO students (name, email, password) VALUES (?, ?, ?)";
-//       connection.query(sql, [name, email, hashedPassword], (error, results) => {
-//         if (error) {
-//           console.error(error);
-//           reject("サーバーエラーが発生しました");
-//         } else {
-//           resolve(results);
-//         }
-//       });
-//     });
-
-//     const insertedUserId = insertResult.insertId;
-
-//     // JWTトークンを生成
-//     const payload = {
-//       name: name,
-//       email: email,
-//       password: hashedPassword,
-//     };
-//     const token = jwt.sign(
-//       payload,
-//       config.jwt.secret,
-//       config.jwt.options
-//     );
-
-//     // メール送信
-//     const authenticationCodeUrl = `http://${req.headers.host}/auth/authentication-code/${insertedUserId}/${token}`;
-//     const mailOptions = {
-//       from: "ryo1030ma2@gmail.com",
-//       to: email,
-//       subject: "ユーザー登録完了",
-//       html: `
-//         <p>以下のURLをクリックして、ユーザー登録を完了してください</p>
-//         <a href="${authenticationCodeUrl}">${authenticationCodeUrl}</a>
-//       `,
-//     };
-//     await transporter.sendMail(mailOptions);
-
-//     // 成功レスポンスを返す
-//     return res.status(200).json({
-//       message: "登録されたメールアドレス宛にメッセージを送信しました",
-//       token: token,
-//     });
-//   } catch (error) {
-//     return res.status(500).json({ error });
-//   }
-// }
-
 
 async function login(req, res) {
   const email = req.body.email;
