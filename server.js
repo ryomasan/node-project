@@ -2,7 +2,8 @@ const express = require("express");
 const mysql = require("mysql");
 const app = express();
 const cors = require("cors");
-const PORT = 3306;
+const WEB_SERVER_PORT = 8000; // Webサーバーのポート番号
+const DB_PORT = 3306;
 const auth = require("./routes/auth");
 
 app.use(cors());
@@ -12,7 +13,7 @@ const connection = mysql.createPool(
         host:'localhost',
         user:'root',
         password:'',
-        port : PORT,
+        port : DB_PORT,
         database:'tt_diary',
     }
 )
@@ -37,7 +38,7 @@ connection.getConnection((err, conn) => {
 app.use(express.json());
 app.use("/auth", auth);
 
-app.listen(PORT, () => {
+app.listen(WEB_SERVER_PORT, () => {
     console.log("サーバーを起動中・・・");
 });
 

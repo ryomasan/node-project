@@ -8,12 +8,12 @@ async function index(req, res) {
   const { connection } = require("../server");
   try {
     const results = await new Promise((resolve, reject) => {
-      connection.query("SELECT * FROM `students`", (error, results) => {
+      connection.query("SELECT * FROM `users`", (error, results) => {
         if (error) {
-          console.log("Error fetching students: ", error);
+          console.log("Error fetching users: ", error);
           reject("ユーザーの取得に失敗しました");
         } else {
-          console.log("Fetched students: ", results);
+          console.log("Fetched users: ", results);
           resolve(results);
         }
       });
@@ -35,6 +35,7 @@ async function register(req, res) {
   const name = req.body.name;
   const email = req.body.email;
   const password = req.body.password;
+  const user_type = req.body.user_type;
   // const password_confirmation = req.body.password_confirmation;
   const errors = validationResult(req);
 
@@ -46,7 +47,7 @@ async function register(req, res) {
   try {
     const { connection } = require("../server");
     connection.query(
-      "SELECT * FROM students WHERE email = ?",
+      "SELECT * FROM users WHERE email = ?",
       [email],
       async (error, results) => {
         if (error) {
@@ -65,10 +66,10 @@ async function register(req, res) {
           let hashedPassword = await bcrypt.hash(password, 10);
 
           const sql =
-            "INSERT INTO students (name, email, password) VALUES (?, ?, ?)";
+            "INSERT INTO users (name, email, password, user_type) VALUES (?, ?, ?, ?)";
           connection.query(
             sql,
-            [name, email, hashedPassword],
+            [name, email, hashedPassword, user_type],
             async (error, results) => {
               if (error) {
                 console.error(error);
@@ -89,20 +90,29 @@ async function register(req, res) {
               );
               if (token) {
                 const authenticationCodeUrl = `http://${req.headers.host}/auth/authentication-code/${insertedUserId}/${token}`;
+                const redirectUrl =
+                  "http://localhost:3000/auth/completion-user-registration";
                 const mailOptions = {
                   from: "ryo1030ma2@gmail.com",
                   to: email,
                   subject: "ユーザー登録完了",
                   html: `
                         <p>以下のURLをクリックして、ユーザー登録を完了してください<\p>
-                        <a href="${authenticationCodeUrl}">${authenticationCodeUrl}<\a>
+                        <a href="${redirectUrl}">${authenticationCodeUrl}<\a>
                         `,
                 };
-                await transporter.sendMail(mailOptions);
-                return res.status(200).json({
-                  message:
-                    "登録されたメールアドレス宛にメッセージを送信しました",
-                  token: token,
+                await transporter.sendMail(mailOptions, (error, info) => {
+                  if (error) {
+                    console.error(error);
+                    return res.status(500).json({
+                      message: "メールの送信中にエラーが発生しました",
+                    });
+                  }
+                  return res.status(200).json({
+                    message: "登録が成功しました",
+                    token: token,
+                    redirectUrl: redirectUrl,
+                  });
                 });
               }
             }
@@ -118,32 +128,62 @@ async function register(req, res) {
 async function login(req, res) {
   const email = req.body.email;
   const password = req.body.password;
-  const students = await index(req, res);
-  console.log(students);
-  const student = students.find(
-    (student) => student.email === email && student.password === password
-  );
-  if (student) {
-    return res.status(400).json([
-      {
-        message: "ログインしました",
-      },
-    ]);
-  } else {
-    return res.status(400).json([
-      {
-        message: "メールアドレスまたはパスワードが一致しません",
-      },
-    ]);
+  const errors = validationResult(req);
+
+  try {
+    const { connection } = require("../server");
+    const sql = "SELECT * FROM users WHERE email = ?";
+    connection.query(sql, [email], async (error, results) => {
+      if (error) {
+        console.error(error);
+        return res
+          .status(500)
+          .json({ message: "サーバーエラーが発生しました" });
+      }
+
+      if (results.length == 0) {
+        return res.status(400).json([
+          {
+            message: "ユーザーが見つかりません",
+          },
+        ]);
+      }
+
+      const user = results[0];
+      const matchedUser = await bcrypt.compare(password, user.password);
+      if (!matchedUser) {
+        return res.status(400).json([
+          {
+            message: "メールアドレスまたはパスワードが一致しません",
+          },
+        ]);
+      }
+
+      const payload = {
+        userId: user.id,
+        email: email,
+      };
+
+      const token = jwt.sign(payload, config.jwt.secret, config.jwt.options);
+
+      if (token) {
+        return res.status(200).json({
+          token: token,
+          message: "ログインに成功しました",
+        });
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ error });
   }
 }
 
 async function forgotPassword(req, res) {
   try {
-    const students = await index(req, res);
+    const users = await index(req, res);
     const email = req.body.email;
-    const student = students.find((student) => student.email === email);
-    if (!student) {
+    const user = users.find((user) => user.email === email);
+    if (!user) {
       return res.status(404).json({ error: "ユーザーが見つかりません" });
     } else {
       const resetUrl = `http://${req.headers.host}/auth/reset-password?email=${email}`;
@@ -172,30 +212,30 @@ async function resetPassword(req, res) {
   // パスワードリセットトークンを検証する
   const token = req.query.token;
   const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-  const students = await index(req, res);
+  const users = await index(req, res);
   // IDとトークンでユーザーを検索し、トークンがまだ有効かどうかを確認する
-  const student = await students.findOne({
+  const user = await users.findOne({
     _id: decodedToken.id,
     passwordResetToken: token,
     passwordResetExpires: { $gt: Date.now() },
   });
 
-  if (!student) {
+  if (!user) {
     return res
       .status(401)
       .json({ error: "無効または期限切れのパスワードリセットトークン" });
   }
 
   // ユーザーのパスワードを更新し、リセットトークンとその有効期限を削除する
-  student.password = req.body.password;
-  student.passwordResetToken = undefined;
-  student.passwordResetExpires = undefined;
-  await student.save();
+  user.password = req.body.password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
 
   // 確認メールを送信する
   const mailOptions = {
     from: process.env.EMAIL_USER,
-    to: student.email,
+    to: user.email,
     subject: "パスワードリセット確認",
     html: `
         <p>パスワードが正常にリセットされました。</p>
