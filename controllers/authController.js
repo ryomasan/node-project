@@ -167,6 +167,7 @@ async function login(req, res) {
       const token = jwt.sign(payload, config.jwt.secret, config.jwt.options);
 
       if (token) {
+        req.session.authenticated = true;
         return res.status(200).json({
           token: token,
           message: "ログインに成功しました",
@@ -253,10 +254,22 @@ async function resetPassword(req, res) {
   }
 }
 
+async function logout(req, res) {
+  try {
+    req.session.destroy();
+    res.status(200).json({
+      message: "ログインに成功しました",
+    });
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 module.exports = {
   index,
   register,
   login,
   forgotPassword,
   resetPassword,
+  logout,
 };

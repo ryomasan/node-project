@@ -6,9 +6,17 @@ const {
   login,
   resetPassword,
   forgotPassword,
+  logout
 } = require("../controllers/authController");
 
-router.get("/index", index);
+// router.get("/", (req, res) => {
+//   if (req.session.authenticated) {
+//     res.redirect("/posts");
+//   } else {
+//     // ユーザーが未認証の場合、ログインページにリダイレクト
+//     res.redirect("/login");
+//   }
+// });
 
 router.post(
   "/register",
@@ -85,5 +93,7 @@ router.post(
     .escape(),
   resetPassword
 );
+
+router.get('/logout', logout);
 
 module.exports = router;

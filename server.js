@@ -5,8 +5,31 @@ const cors = require("cors");
 const WEB_SERVER_PORT = 8000; // Webサーバーのポート番号
 const DB_PORT = 3306;
 const auth = require("./routes/auth");
+const session = require('express-session');
+
+app.use(session({
+    secret: 'your_secret_key',
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+        secure: true, // HTTPSを使用
+        httpOnly: true, // XSS攻撃を防ぐ
+        sameSite: 'strict', // CSRF攻撃を防ぐ
+        maxAge: 24 * 60 * 60 * 1000 // セッションの有効期限を設定（例: 24時間）
+    }
+}));
 
 app.use(cors());
+
+app.get('/', (req, res) => {
+    console.log(req.session);
+    // if (req.session.authenticated) {
+    //     res.redirect('/login');
+    // } else {
+    //     // ユーザーが未認証の場合、ログインページにリダイレクト
+    //     res.redirect('/login');
+    // }
+});
 
 const connection = mysql.createPool(
     {
@@ -44,5 +67,5 @@ app.listen(WEB_SERVER_PORT, () => {
 
 module.exports= { 
     connection,
-    // bodyParser
+    session
 }
