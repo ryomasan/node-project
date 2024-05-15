@@ -4,26 +4,33 @@ const nodemailer = require("nodemailer");
 const config = require("../config");
 const { validationResult, body } = require("express-validator");
 
-async function index(req, res) {
-  const { connection } = require("../server");
-  try {
-    const results = await new Promise((resolve, reject) => {
-      connection.query("SELECT * FROM `users`", (error, results) => {
-        if (error) {
-          console.log("Error fetching users: ", error);
-          reject("ユーザーの取得に失敗しました");
-        } else {
-          console.log("Fetched users: ", results);
-          resolve(results);
-        }
-      });
-    });
-    return res.status(200).json(results);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "ユーザーの取得に失敗しました" });
-  }
-}
+
+// async function index(req, res) {
+//   // const { connection } = require("../server");
+//   try {
+//       if (req.session.authenticated) {
+//         res.redirect("/posts");
+//       } else {
+//         // ユーザーが未認証の場合、ログインページにリダイレクト
+//         res.redirect("/login");
+//       }
+// const results = await new Promise((resolve, reject) => {
+//   connection.query("SELECT * FROM `users`", (error, results) => {
+//     if (error) {
+//       console.log("Error fetching users: ", error);
+//       reject("ユーザーの取得に失敗しました");
+//     } else {
+//       console.log("Fetched users: ", results);
+//       resolve(results);
+//     }
+//   });
+// });
+// return res.status(200).json(results);
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({ error: "ユーザーの取得に失敗しました" });
+//   }
+// }
 
 const transporter = nodemailer.createTransport({
   ignoreTLS: true,
@@ -168,6 +175,11 @@ async function login(req, res) {
 
       if (token) {
         req.session.authenticated = true;
+        req.session.user = {
+          userId: user.id,
+          email: email,
+        };
+        console.log(req.session);
         return res.status(200).json({
           token: token,
           message: "ログインに成功しました",
@@ -256,17 +268,15 @@ async function resetPassword(req, res) {
 
 async function logout(req, res) {
   try {
-    req.session.destroy();
-    res.status(200).json({
-      message: "ログインに成功しました",
-    });
+    req.session.user.destroy();
+    res.redirect('/');
   } catch (error) {
     console.error(error);
   }
 }
 
 module.exports = {
-  index,
+  // index,
   register,
   login,
   forgotPassword,

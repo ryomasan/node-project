@@ -1,22 +1,12 @@
 const router = require("express").Router();
 const { body } = require("express-validator");
 const {
-  index,
   register,
   login,
   resetPassword,
   forgotPassword,
   logout
 } = require("../controllers/authController");
-
-// router.get("/", (req, res) => {
-//   if (req.session.authenticated) {
-//     res.redirect("/posts");
-//   } else {
-//     // ユーザーが未認証の場合、ログインページにリダイレクト
-//     res.redirect("/login");
-//   }
-// });
 
 router.post(
   "/register",
@@ -94,6 +84,6 @@ router.post(
   resetPassword
 );
 
-router.get('/logout', logout);
+router.post('/logout', logout);
 
 module.exports = router;
